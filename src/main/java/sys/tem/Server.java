@@ -14,6 +14,7 @@ public class Server {
     public static final String POST = "POST";
     private String siteFilePatch = "./public";
     private Map<Request, Handler> requestResponse = new HashMap<>();
+    private String homeRes = "/index.html";
     final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
     ExecutorService threadPool;
     int portNumber;
@@ -89,7 +90,7 @@ public class Server {
 
             final var headersBytes = in.readNBytes(headersEnd - headersStart);
             final var headers = Arrays.asList(new String(headersBytes).split("\r\n"));
-            System.out.println(headers);
+
 
             Request request;
 
@@ -111,11 +112,21 @@ public class Server {
                 request = new Request(method, path);
             }
 
-            System.out.println(request.getQueryParams());
+            //===consoleDemo
+            System.out.println("headers " + headers);
+            System.out.println("-getQueryParams()   " + request.getQueryParams());
+            System.out.println("-getQueryParam(\"value\")   " + request.getQueryParam("value"));
+            System.out.println("-request.getPostParams()   " + request.getPostParams());
+            System.out.println("-getPostParam(\"value\")   " + request.getPostParam("value"));
+            System.out.println("-request   " + request);
+            //===endConsoleDemo
 
             if (requestResponse.containsKey(request)) {
                 requestResponse.get(request).handle(request, out);
                 return;
+            }
+            if (Objects.equals(request.getPatch(), "/")) {
+                request.setPatch(homeRes);
             }
             if (!validPaths.contains(request.getPatch())) {
                 headlineWithoutContent(out, "404", "Not Found");
@@ -149,7 +160,6 @@ public class Server {
         final var filePath = Path.of(siteFilePatch, filePatch);
         final var mimeType = Files.probeContentType(filePath);
         final var length = Files.size(filePath);
-        System.out.println(mimeType);
         responseStream.write((
                 "HTTP/1.1 200 OK\r\n" +
                         "Content-Type: " + mimeType + "\r\n" +

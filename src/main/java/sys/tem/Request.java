@@ -5,22 +5,20 @@ import org.apache.http.client.utils.URLEncodedUtils;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public class Request {
     private String method;
     private String patch;
-    private Map<String, String> param = new HashMap<>();
+    private Map<String, ArrayList<String>> getParam = new HashMap<>();
+    private Map<String, ArrayList<String>> postParam = new HashMap<>();
     private String requestBody;
 
     public Request(String method, String patch, String requestBody) {
         this.method = method;
         patchAndParam(patch);
-
         this.requestBody = requestBody;
+        this.postParam = params(requestBody);
     }
 
     public String getMethod() {
@@ -33,18 +31,29 @@ public class Request {
             this.patch = patch;
         } else {
             this.patch = patch.substring(0, sep);
-            List<NameValuePair> params;
-            try {
-                params = URLEncodedUtils.parse(new URI(patch), "UTF-8");
-                for (NameValuePair param : params) {
-                    if (param.getName() != null && param.getValue() != null) {
-                        this.param.put(param.getName(), param.getValue());
+            this.getParam = params(patch.substring(sep + 1));
+        }
+    }
+
+    private Map params(String stParam) {
+        List<NameValuePair> params;
+        Map<String, ArrayList<String>> resParam = new HashMap<>();
+        try {
+            params = URLEncodedUtils.parse(new URI("?" + stParam), "UTF-8");
+            for (NameValuePair param : params) {
+                if (param.getName() != null && param.getValue() != null) {
+                    if (resParam.containsKey(param.getName())) {
+                        resParam.get(param.getName()).add(param.getValue());
+                    } else {
+                        resParam.put(param.getName(), new ArrayList<>());
+                        resParam.get(param.getName()).add(param.getValue());
                     }
                 }
-            } catch (URISyntaxException e) {
-                throw new RuntimeException(e);
             }
+        } catch (URISyntaxException e) {
+            throw new RuntimeException(e);
         }
+        return resParam;
     }
 
     public String getPatch() {
@@ -55,25 +64,30 @@ public class Request {
         return requestBody;
     }
 
+    public void setPatch(String patch) {
+        this.patch = patch;
+    }
+
     @Override
     public String toString() {
         return "Request{" +
                 "method='" + method + '\'' +
                 ", patch='" + patch + '\'' +
-                ", param='" + param + '\'' +
+                ", getParam=" + getParam +
+                ", postParam=" + postParam +
                 ", requestBody='" + requestBody + '\'' +
                 '}';
     }
 
-    public String getQueryParam(String name) {
-        if (param.containsKey(name)) {
-            return param.get(name);
+    public List getQueryParam(String name) {
+        if (getParam.containsKey(name)) {
+            return getParam.get(name);
         }
         return null;
     }
 
     public Map getQueryParams() {
-        return param;
+        return getParam;
     }
 
     public Request(String method, String patch) {
@@ -93,4 +107,17 @@ public class Request {
     public int hashCode() {
         return Objects.hash(method, patch);
     }
+
+    public Map getPostParams() {
+        return postParam;
+    }
+
+    public List getPostParam(String name) {
+        if (postParam.containsKey(name)) {
+            return postParam.get(name);
+        }
+        return null;
+    }
+
+
 }
